@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Target, Users, Award, Lightbulb, Upload, Brain, Shield, Zap, CheckCircle, Globe, Clock, TrendingUp, Star, Briefcase, GraduationCap, Heart, Code, Database, Cpu, Network, Lock, Eye, Microscope } from 'lucide-react';
-
+import { useEffect } from 'react';
 const About = ({ darkMode }) => {
   const stats = [
     { icon: Target, label: 'Accuracy Rate', value: '99.2%', color: 'text-blue-400', description: 'Across all content types' },
@@ -233,6 +233,10 @@ const About = ({ darkMode }) => {
       logo: '🏛️'
     }
   ];
+
+  useEffect(() => {
+  window.scrollTo(0, 0);
+}, []);
 
   return (
     <motion.div

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { FileText, Image, Video, Upload, AlertTriangle, CheckCircle, XCircle, Send, Loader, Link as LinkIcon } from 'lucide-react';
@@ -50,6 +50,9 @@ const Detect = ({ darkMode }) => {
       setUploadedFile(file);
     }
   };
+  useEffect(() => {
+  window.scrollTo(0, 0);
+}, []);
 
   return (
     <motion.div

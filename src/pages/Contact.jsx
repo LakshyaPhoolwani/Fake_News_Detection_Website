@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState , useEffect} from 'react';
 import { motion } from 'framer-motion';
 import { Mail, MessageSquare, Phone, MapPin, Send, Clock, Globe, Linkedin, Github } from 'lucide-react';
 
@@ -89,6 +89,11 @@ const Contact = () => {
     };
     return colors[color] || colors.blue;
   };
+
+  useEffect(() => {
+  window.scrollTo(0, 0);
+}, []);
+  
 
   return (
     <motion.div

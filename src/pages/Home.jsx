@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Play, FileText, Image, Video, Zap, Shield, Brain, Target, Users, Award, Lightbulb, CheckCircle, TrendingUp, Globe, Clock, Star } from 'lucide-react';
 import Charts from '../components/Charts';
+import { useEffect } from 'react';
 
 const Home = () => {
   const features = [
@@ -130,6 +131,10 @@ const Home = () => {
       users: '25+ agencies'
     }
   ];
+  
+  useEffect(() => {
+  window.scrollTo(0, 0);
+}, []);
 
   return (
     <motion.div
