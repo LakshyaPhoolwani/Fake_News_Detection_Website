@@ -1,130 +1,31 @@
 /**
  * Controller functions for fake news detection endpoints
- * Handles communication with Python microservices
+ * Handles communication with RapidAPI's Fake News Detection service
  */
 
 const axios = require('axios');
 
-// Configure axios defaults
-const axiosConfig = {
-  timeout: parseInt(process.env.API_TIMEOUT) || 30000,
+/**
+ * RapidAPI configuration
+ * Sets up the base URL and headers for API requests
+ */
+const RAPIDAPI_CONFIG = {
+  baseURL: 'https://fake-news-detection.p.rapidapi.com',
+  timeout: 30000, // 30 second timeout
   headers: {
     'Content-Type': 'application/json',
-    'User-Agent': 'TruthGuard-API/1.0'
+    'X-RapidAPI-Key': process.env.RAPIDAPI_KEY,
+    'X-RapidAPI-Host': 'fake-news-detection.p.rapidapi.com'
   }
 };
 
-// Create axios instances for each microservice
-const textServiceAPI = axios.create({
-  baseURL: process.env.TEXT_SERVICE_URL || 'http://localhost:6001',
-  ...axiosConfig
-});
-
-const imageServiceAPI = axios.create({
-  baseURL: process.env.IMAGE_SERVICE_URL || 'http://localhost:6002',
-  ...axiosConfig
-});
-
-const videoServiceAPI = axios.create({
-  baseURL: process.env.VIDEO_SERVICE_URL || 'http://localhost:6003',
-  ...axiosConfig
-});
-
 /**
- * Helper function to format detection response
- * @param {Object} serviceResponse - Response from Python microservice
- * @param {string} contentType - Type of content analyzed
- * @returns {Object} Formatted response
+ * Create axios instance with RapidAPI configuration
  */
-const formatDetectionResponse = (serviceResponse, contentType) => {
-  const { data } = serviceResponse;
-  
-  return {
-    success: true,
-    contentType,
-    result: {
-      prediction: data.prediction || data.result || 'unknown',
-      confidence: data.confidence || data.score || 0,
-      isFakeNews: data.is_fake || data.isFake || (data.prediction === 'fake'),
-      label: data.label || data.prediction || 'unknown'
-    },
-    analysis: {
-      processingTime: data.processing_time || data.processingTime || null,
-      modelVersion: data.model_version || data.modelVersion || null,
-      features: data.features || null,
-      explanation: data.explanation || null
-    },
-    metadata: {
-      timestamp: new Date().toISOString(),
-      serviceVersion: data.version || '1.0.0',
-      requestId: data.request_id || generateRequestId()
-    }
-  };
-};
+const rapidAPIClient = axios.create(RAPIDAPI_CONFIG);
 
 /**
- * Helper function to handle microservice errors
- * @param {Error} error - Axios error object
- * @param {string} serviceName - Name of the microservice
- * @returns {Object} Error response
- */
-const handleServiceError = (error, serviceName) => {
-  console.error(`${serviceName} Service Error:`, error.message);
-  
-  if (error.code === 'ECONNREFUSED') {
-    return {
-      success: false,
-      error: 'Service unavailable',
-      message: `${serviceName} detection service is currently unavailable. Please try again later.`,
-      details: {
-        service: serviceName,
-        status: 'offline',
-        timestamp: new Date().toISOString()
-      }
-    };
-  }
-  
-  if (error.code === 'ETIMEDOUT') {
-    return {
-      success: false,
-      error: 'Request timeout',
-      message: `${serviceName} detection service timed out. The content may be too large or complex.`,
-      details: {
-        service: serviceName,
-        timeout: axiosConfig.timeout,
-        timestamp: new Date().toISOString()
-      }
-    };
-  }
-  
-  if (error.response) {
-    return {
-      success: false,
-      error: 'Service error',
-      message: error.response.data?.message || `${serviceName} service returned an error`,
-      details: {
-        service: serviceName,
-        statusCode: error.response.status,
-        serviceError: error.response.data,
-        timestamp: new Date().toISOString()
-      }
-    };
-  }
-  
-  return {
-    success: false,
-    error: 'Unknown error',
-    message: `An unexpected error occurred while processing your request with ${serviceName} service`,
-    details: {
-      service: serviceName,
-      error: error.message,
-      timestamp: new Date().toISOString()
-    }
-  };
-};
-
-/**
- * Generate a unique request ID
+ * Generate a unique request ID for logging and tracking
  * @returns {string} Unique request identifier
  */
 const generateRequestId = () => {
@@ -132,166 +33,127 @@ const generateRequestId = () => {
 };
 
 /**
- * Detect fake news in text content
+ * Detect fake news in text content using RapidAPI
  * @route POST /api/detect/text
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
  */
 const detectText = async (req, res) => {
+  const requestId = generateRequestId();
+  
   try {
     const { text } = req.body;
-    const requestId = generateRequestId();
     
-    console.log(`[${requestId}] Processing text detection request`);
+    console.log(`[${requestId}] Processing fake news detection request`);
+    console.log(`[${requestId}] Text length: ${text.length} characters`);
     
-    // Prepare request payload for Python microservice
-    const payload = {
-      text: text.trim(),
-      request_id: requestId,
-      timestamp: new Date().toISOString()
-    };
-    
-    // Send request to text detection microservice
-    const response = await textServiceAPI.post('/predict', payload);
-    
-    console.log(`[${requestId}] Text detection completed successfully`);
-    
-    // Format and send response
-    const formattedResponse = formatDetectionResponse(response, 'text');
-    res.status(200).json(formattedResponse);
-    
-  } catch (error) {
-    const errorResponse = handleServiceError(error, 'Text');
-    res.status(error.response?.status || 500).json(errorResponse);
-  }
-};
-
-/**
- * Detect fake news in image content
- * @route POST /api/detect/image
- */
-const detectImage = async (req, res) => {
-  try {
-    const { image } = req.body;
-    const requestId = generateRequestId();
-    
-    console.log(`[${requestId}] Processing image detection request`);
-    
-    // Prepare request payload for Python microservice
-    const payload = {
-      image: image,
-      request_id: requestId,
-      timestamp: new Date().toISOString()
-    };
-    
-    // Send request to image detection microservice
-    const response = await imageServiceAPI.post('/predict', payload);
-    
-    console.log(`[${requestId}] Image detection completed successfully`);
-    
-    // Format and send response
-    const formattedResponse = formatDetectionResponse(response, 'image');
-    res.status(200).json(formattedResponse);
-    
-  } catch (error) {
-    const errorResponse = handleServiceError(error, 'Image');
-    res.status(error.response?.status || 500).json(errorResponse);
-  }
-};
-
-/**
- * Detect fake news in video content
- * @route POST /api/detect/video
- */
-const detectVideo = async (req, res) => {
-  try {
-    const { video } = req.body;
-    const requestId = generateRequestId();
-    
-    console.log(`[${requestId}] Processing video detection request`);
-    
-    // Determine if video is URL or base64
-    const isUrl = video.startsWith('http');
-    
-    // Prepare request payload for Python microservice
-    const payload = {
-      [isUrl ? 'video_url' : 'video']: video,
-      request_id: requestId,
-      timestamp: new Date().toISOString(),
-      input_type: isUrl ? 'url' : 'base64'
-    };
-    
-    // Send request to video detection microservice
-    const response = await videoServiceAPI.post('/predict', payload);
-    
-    console.log(`[${requestId}] Video detection completed successfully`);
-    
-    // Format and send response
-    const formattedResponse = formatDetectionResponse(response, 'video');
-    res.status(200).json(formattedResponse);
-    
-  } catch (error) {
-    const errorResponse = handleServiceError(error, 'Video');
-    res.status(error.response?.status || 500).json(errorResponse);
-  }
-};
-
-/**
- * Check the status of all detection microservices
- * @route GET /api/detect/status
- */
-const getServiceStatus = async (req, res) => {
-  const services = [
-    { name: 'Text', api: textServiceAPI, url: process.env.TEXT_SERVICE_URL },
-    { name: 'Image', api: imageServiceAPI, url: process.env.IMAGE_SERVICE_URL },
-    { name: 'Video', api: videoServiceAPI, url: process.env.VIDEO_SERVICE_URL }
-  ];
-  
-  const statusChecks = services.map(async (service) => {
-    try {
-      const startTime = Date.now();
-      await service.api.get('/health', { timeout: 5000 });
-      const responseTime = Date.now() - startTime;
-      
-      return {
-        name: service.name,
-        status: 'online',
-        url: service.url,
-        responseTime: `${responseTime}ms`,
-        lastChecked: new Date().toISOString()
-      };
-    } catch (error) {
-      return {
-        name: service.name,
-        status: 'offline',
-        url: service.url,
-        error: error.message,
-        lastChecked: new Date().toISOString()
-      };
+    // Check if RapidAPI key is configured
+    if (!process.env.RAPIDAPI_KEY) {
+      console.error(`[${requestId}] RapidAPI key not configured`);
+      return res.status(500).json({
+        error: 'Fake news detection service unavailable',
+        message: 'API key not configured'
+      });
     }
-  });
-  
-  try {
-    const results = await Promise.all(statusChecks);
-    const allOnline = results.every(service => service.status === 'online');
     
-    res.status(allOnline ? 200 : 503).json({
-      success: true,
-      overallStatus: allOnline ? 'healthy' : 'degraded',
-      services: results,
-      timestamp: new Date().toISOString()
-    });
+    // Prepare request payload for RapidAPI
+    const payload = {
+      text: text.trim()
+    };
+    
+    console.log(`[${requestId}] Sending request to RapidAPI...`);
+    
+    // Send request to RapidAPI's Fake News Detection service
+    const response = await rapidAPIClient.post('/fakenews', payload);
+    
+    console.log(`[${requestId}] RapidAPI request successful`);
+    console.log(`[${requestId}] Response status: ${response.status}`);
+    
+    // Return the response from RapidAPI directly to the frontend
+    res.status(200).json(response.data);
+    
   } catch (error) {
+    console.error(`[${requestId}] Error occurred:`, error.message);
+    
+    // Handle different types of errors
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      console.error(`[${requestId}] Network connection error`);
+      return res.status(503).json({
+        error: 'Fake news detection service unavailable',
+        message: 'Unable to connect to detection service'
+      });
+    }
+    
+    if (error.code === 'ETIMEDOUT') {
+      console.error(`[${requestId}] Request timeout`);
+      return res.status(504).json({
+        error: 'Fake news detection service unavailable',
+        message: 'Detection service request timed out'
+      });
+    }
+    
+    if (error.response) {
+      // RapidAPI returned an error response
+      console.error(`[${requestId}] RapidAPI error response:`, {
+        status: error.response.status,
+        data: error.response.data
+      });
+      
+      // Handle specific RapidAPI error codes
+      if (error.response.status === 401) {
+        return res.status(500).json({
+          error: 'Fake news detection service unavailable',
+          message: 'API authentication failed'
+        });
+      }
+      
+      if (error.response.status === 403) {
+        return res.status(500).json({
+          error: 'Fake news detection service unavailable',
+          message: 'API access forbidden'
+        });
+      }
+      
+      if (error.response.status === 429) {
+        return res.status(429).json({
+          error: 'Fake news detection service unavailable',
+          message: 'API rate limit exceeded'
+        });
+      }
+      
+      // Generic API error
+      return res.status(500).json({
+        error: 'Fake news detection service unavailable',
+        message: 'Detection service returned an error'
+      });
+    }
+    
+    // Generic error fallback
+    console.error(`[${requestId}] Unexpected error:`, error);
     res.status(500).json({
-      success: false,
-      error: 'Status check failed',
-      message: 'Unable to check service status',
-      timestamp: new Date().toISOString()
+      error: 'Fake news detection service unavailable',
+      message: 'An unexpected error occurred'
     });
+  }
+};
+
+/**
+ * Health check for RapidAPI service
+ * This function can be used to verify if the RapidAPI service is accessible
+ * @returns {Promise<boolean>} True if service is accessible, false otherwise
+ */
+const checkRapidAPIHealth = async () => {
+  try {
+    // Simple test request to check if the service is accessible
+    await rapidAPIClient.post('/fakenews', { text: 'test' });
+    return true;
+  } catch (error) {
+    console.error('RapidAPI health check failed:', error.message);
+    return false;
   }
 };
 
 module.exports = {
   detectText,
-  detectImage,
-  detectVideo,
-  getServiceStatus
+  checkRapidAPIHealth
 };

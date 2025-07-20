@@ -1,13 +1,10 @@
 /**
  * Main Express server application for Fake News Detection API
- * Handles routing, middleware setup, and server initialization
+ * Integrates with RapidAPI's Fake News Detection service
  */
 
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 // Import routes
@@ -16,66 +13,28 @@ const detectRoutes = require('./routes/detect');
 // Initialize Express app
 const app = express();
 
-// Security middleware
-app.use(helmet({
-  contentSecurityPolicy: false, // Disable CSP for API
-  crossOriginEmbedderPolicy: false
-}));
-
-// Rate limiting middleware
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
-  message: {
-    error: 'Too many requests from this IP, please try again later.',
-    retryAfter: Math.ceil((parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000) / 1000)
-  },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-});
-
-app.use(limiter);
-
-// CORS configuration
+// CORS configuration - allows frontend to communicate with backend
 const corsOptions = {
   origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
   optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
 
-// Body parsing middleware
+// Body parsing middleware - enables JSON request body parsing
 app.use(express.json({ 
-  limit: '50mb', // Increased limit for base64 encoded images/videos
-  verify: (req, res, buf) => {
-    try {
-      JSON.parse(buf);
-    } catch (e) {
-      res.status(400).json({ 
-        success: false, 
-        error: 'Invalid JSON format' 
-      });
-      throw new Error('Invalid JSON');
-    }
-  }
+  limit: '10mb' // Allow larger text content
 }));
 
 app.use(express.urlencoded({ 
   extended: true, 
-  limit: '50mb' 
+  limit: '10mb' 
 }));
 
-// Logging middleware
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-} else {
-  app.use(morgan('combined'));
-}
-
-// Health check endpoint
+// Health check endpoint - verify server is running
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
@@ -86,10 +45,10 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API routes
+// API routes - register detection endpoints
 app.use('/api/detect', detectRoutes);
 
-// Root endpoint
+// Root endpoint - API information
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
@@ -97,11 +56,9 @@ app.get('/', (req, res) => {
     version: require('./package.json').version,
     endpoints: {
       health: '/health',
-      textDetection: '/api/detect/text',
-      imageDetection: '/api/detect/image',
-      videoDetection: '/api/detect/video'
+      textDetection: '/api/detect/text'
     },
-    documentation: 'https://api-docs.truthguard.ai'
+    documentation: 'Send POST requests to /api/detect/text with JSON body containing "text" field'
   });
 });
 
@@ -114,9 +71,7 @@ app.use('*', (req, res) => {
     availableEndpoints: [
       'GET /',
       'GET /health',
-      'POST /api/detect/text',
-      'POST /api/detect/image',
-      'POST /api/detect/video'
+      'POST /api/detect/text'
     ]
   });
 });
@@ -158,12 +113,7 @@ const server = app.listen(PORT, () => {
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
   console.log(`🔗 Health check: http://localhost:${PORT}/health`);
   console.log(`📡 API Base URL: http://localhost:${PORT}/api`);
-  
-  // Log microservice URLs
-  console.log('\n🔧 Microservice Configuration:');
-  console.log(`   Text Service: ${process.env.TEXT_SERVICE_URL}/predict`);
-  console.log(`   Image Service: ${process.env.IMAGE_SERVICE_URL}/predict`);
-  console.log(`   Video Service: ${process.env.VIDEO_SERVICE_URL}/predict`);
+  console.log(`🔑 RapidAPI Key configured: ${process.env.RAPIDAPI_KEY ? 'Yes' : 'No'}`);
 });
 
 // Graceful shutdown handling
