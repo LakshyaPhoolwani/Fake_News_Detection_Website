@@ -9,6 +9,8 @@ require('dotenv').config();
 
 // Import routes
 const detectRoutes = require('./routes/detect');
+const authRoutes = require('./routes/auth');
+const contactRoutes = require('./routes/contact');
 
 // Initialize Express app
 const app = express();
@@ -47,6 +49,8 @@ app.get('/health', (req, res) => {
 
 // API routes - register detection endpoints
 app.use('/api/detect', detectRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/contact', contactRoutes);
 
 // Root endpoint - API information
 app.get('/', (req, res) => {
@@ -56,9 +60,11 @@ app.get('/', (req, res) => {
     version: require('./package.json').version,
     endpoints: {
       health: '/health',
-      textDetection: '/api/detect/text'
+      textDetection: '/api/detect/text',
+      authentication: '/api/auth',
+      contact: '/api/contact'
     },
-    documentation: 'Send POST requests to /api/detect/text with JSON body containing "text" field'
+    documentation: 'API endpoints for fake news detection, authentication, and contact forms'
   });
 });
 
@@ -71,7 +77,10 @@ app.use('*', (req, res) => {
     availableEndpoints: [
       'GET /',
       'GET /health',
-      'POST /api/detect/text'
+      'POST /api/detect/text',
+      'POST /api/auth/login',
+      'POST /api/auth/register',
+      'POST /api/contact'
     ]
   });
 });

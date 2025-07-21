@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Shield, Menu, X, Moon, Sun } from 'lucide-react';
+import { Shield, Menu, X, Moon, Sun, User, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const Navbar = ({ darkMode, toggleDarkMode }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const location = useLocation();
+  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  const user = isLoggedIn ? JSON.parse(localStorage.getItem('user') || '{}') : null;
 
   const navLinks = [
     { name: 'Home', path: '/' },
@@ -16,6 +19,13 @@ const Navbar = ({ darkMode, toggleDarkMode }) => {
 
   const isActive = (path) => location.pathname === path;
 
+  const handleLogout = () => {
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    setShowUserMenu(false);
+    window.location.reload(); // Refresh to update navbar state
+  };
   return (
     <nav className={`fixed w-full top-0 z-50 transition-colors duration-300 ${
       darkMode 
@@ -74,16 +84,78 @@ const Navbar = ({ darkMode, toggleDarkMode }) => {
               </motion.div>
             </button>
             
-            <Link
-              to="/login"
-              className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 ${
-                darkMode
-                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white'
-                  : 'bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800 text-white'
-              }`}
-            >
-              Login
-            </Link>
+            {isLoggedIn ? (
+              <div className="relative">
+                <button
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
+                    darkMode 
+                      ? 'bg-gray-800 hover:bg-gray-700 text-white' 
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
+                  }`}
+                >
+                  <User className="h-4 w-4" />
+                  <span>{user?.name || 'User'}</span>
+                </button>
+                
+                {showUserMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`absolute right-0 mt-2 w-48 rounded-lg shadow-lg border ${
+                      darkMode 
+                        ? 'bg-gray-800 border-gray-700' 
+                        : 'bg-white border-gray-200'
+                    }`}
+                  >
+                    <div className="p-3 border-b border-gray-600">
+                      <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {user?.name}
+                      </p>
+                      <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        {user?.email}
+                      </p>
+                    </div>
+                    <div className="p-2">
+                      <Link
+                        to="/detect"
+                        className={`flex items-center space-x-2 w-full px-3 py-2 rounded-md text-sm transition-colors ${
+                          darkMode 
+                            ? 'text-gray-300 hover:text-white hover:bg-gray-700' 
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }`}
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        <Shield className="h-4 w-4" />
+                        <span>Detection Tool</span>
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className={`flex items-center space-x-2 w-full px-3 py-2 rounded-md text-sm transition-colors ${
+                          darkMode 
+                            ? 'text-gray-300 hover:text-white hover:bg-gray-700' 
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                        }`}
+                      >
+                        <LogOut className="h-4 w-4" />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 ${
+                  darkMode
+                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white'
+                    : 'bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800 text-white'
+                }`}
+              >
+                Login
+              </Link>
+            )}
           </div>
 
           <div className="md:hidden flex items-center space-x-2">
@@ -140,17 +212,57 @@ const Navbar = ({ darkMode, toggleDarkMode }) => {
                   {link.name}
                 </Link>
               ))}
-              <Link
-                to="/login"
-                className={`block px-3 py-2 mt-2 rounded-md text-base font-medium text-center transition-colors ${
-                  darkMode
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
-                    : 'bg-gradient-to-r from-blue-600 to-purple-700 text-white'
-                }`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Login
-              </Link>
+              
+              {isLoggedIn ? (
+                <div className="mt-4 pt-4 border-t border-gray-600">
+                  <div className="px-3 py-2 mb-2">
+                    <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      {user?.name}
+                    </p>
+                    <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {user?.email}
+                    </p>
+                  </div>
+                  <Link
+                    to="/detect"
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                      darkMode 
+                        ? 'text-gray-300 hover:text-white hover:bg-gray-800' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <Shield className="h-4 w-4" />
+                    <span>Detection Tool</span>
+                  </Link>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setIsMenuOpen(false);
+                    }}
+                    className={`flex items-center space-x-2 w-full px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                      darkMode 
+                        ? 'text-gray-300 hover:text-white hover:bg-gray-800' 
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  to="/login"
+                  className={`block px-3 py-2 mt-2 rounded-md text-base font-medium text-center transition-colors ${
+                    darkMode
+                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
+                      : 'bg-gradient-to-r from-blue-600 to-purple-700 text-white'
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Login
+                </Link>
+              )}
             </div>
           </motion.div>
         )}

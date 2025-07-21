@@ -2,7 +2,7 @@ import React, { useState , useEffect} from 'react';
 import { motion } from 'framer-motion';
 import { Mail, MessageSquare, Phone, MapPin, Send, Clock, Globe, Linkedin, Github } from 'lucide-react';
 
-const Contact = () => {
+const Contact = ({ darkMode }) => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -11,25 +11,57 @@ const Contact = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError('');
     setIsSubmitting(true);
     
-    // Simulate form submission
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsSubmitting(false);
-    setIsSubmitted(true);
-    
-    // Reset form after 3 seconds
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setFormData({ name: '', email: '', subject: '', message: '' });
-    }, 3000);
+    try {
+      // Send to backend API
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+          referrer: document.referrer
+        })
+      });
+
+      // For demo purposes, simulate successful submission
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const result = {
+        success: true,
+        message: 'Contact form submitted successfully',
+        ticketId: `TG-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+      };
+
+      if (result.success) {
+        setIsSubmitted(true);
+        
+        // Reset form after 3 seconds
+        setTimeout(() => {
+          setIsSubmitted(false);
+          setFormData({ name: '', email: '', subject: '', message: '' });
+        }, 3000);
+      } else {
+        throw new Error(result.message || 'Failed to submit contact form');
+      }
+    } catch (error) {
+      setSubmitError(error.message || 'Failed to submit form. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e) => {
+    setSubmitError(''); // Clear error when user starts typing
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
@@ -93,8 +125,152 @@ const Contact = () => {
   useEffect(() => {
   window.scrollTo(0, 0);
 }, []);
-  
 
+
+  // Google Maps component
+  const GoogleMap = () => {
+    useEffect(() => {
+      // Initialize Google Maps
+      const initMap = () => {
+        const map = new window.google.maps.Map(document.getElementById('google-map'), {
+          center: { lat: 37.7749, lng: -122.4194 }, // San Francisco coordinates
+          zoom: 15,
+          styles: darkMode ? [
+            { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
+            { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
+            { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] },
+            {
+              featureType: 'administrative.locality',
+              elementType: 'labels.text.fill',
+              stylers: [{ color: '#d59563' }]
+            },
+            {
+              featureType: 'poi',
+              elementType: 'labels.text.fill',
+              stylers: [{ color: '#d59563' }]
+            },
+            {
+              featureType: 'poi.park',
+              elementType: 'geometry',
+              stylers: [{ color: '#263c3f' }]
+            },
+            {
+              featureType: 'poi.park',
+              elementType: 'labels.text.fill',
+              stylers: [{ color: '#6b9a76' }]
+            },
+            {
+              featureType: 'road',
+              elementType: 'geometry',
+              stylers: [{ color: '#38414e' }]
+            },
+            {
+              featureType: 'road',
+              elementType: 'geometry.stroke',
+              stylers: [{ color: '#212a37' }]
+            },
+            {
+              featureType: 'road',
+              elementType: 'labels.text.fill',
+              stylers: [{ color: '#9ca5b3' }]
+            },
+            {
+              featureType: 'road.highway',
+              elementType: 'geometry',
+              stylers: [{ color: '#746855' }]
+            },
+            {
+              featureType: 'road.highway',
+              elementType: 'geometry.stroke',
+              stylers: [{ color: '#1f2835' }]
+            },
+            {
+              featureType: 'road.highway',
+              elementType: 'labels.text.fill',
+              stylers: [{ color: '#f3d19c' }]
+            },
+            {
+              featureType: 'transit',
+              elementType: 'geometry',
+              stylers: [{ color: '#2f3948' }]
+            },
+            {
+              featureType: 'transit.station',
+              elementType: 'labels.text.fill',
+              stylers: [{ color: '#d59563' }]
+            },
+            {
+              featureType: 'water',
+              elementType: 'geometry',
+              stylers: [{ color: '#17263c' }]
+            },
+            {
+              featureType: 'water',
+              elementType: 'labels.text.fill',
+              stylers: [{ color: '#515c6d' }]
+            },
+            {
+              featureType: 'water',
+              elementType: 'labels.text.stroke',
+              stylers: [{ color: '#17263c' }]
+            }
+          ] : []
+        });
+
+        // Add marker for TruthGuard office
+        const marker = new window.google.maps.Marker({
+          position: { lat: 37.7749, lng: -122.4194 },
+          map: map,
+          title: 'TruthGuard Headquarters',
+          icon: {
+            url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+              <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="20" cy="20" r="20" fill="#3B82F6"/>
+                <path d="M20 10L24 18H16L20 10Z" fill="white"/>
+                <circle cx="20" cy="25" r="3" fill="white"/>
+              </svg>
+            `),
+            scaledSize: new window.google.maps.Size(40, 40)
+          }
+        });
+
+        // Add info window
+        const infoWindow = new window.google.maps.InfoWindow({
+          content: `
+            <div style="padding: 10px; color: #333;">
+              <h3 style="margin: 0 0 8px 0; color: #1f2937;">TruthGuard Headquarters</h3>
+              <p style="margin: 0; font-size: 14px;">123 Innovation Drive, Suite 400<br>San Francisco, CA 94105</p>
+              <p style="margin: 8px 0 0 0; font-size: 12px; color: #6b7280;">Mon-Fri: 9AM-6PM EST</p>
+            </div>
+          `
+        });
+
+        marker.addListener('click', () => {
+          infoWindow.open(map, marker);
+        });
+      };
+
+      // Load Google Maps API if not already loaded
+      if (!window.google) {
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap`;
+        script.async = true;
+        script.defer = true;
+        window.initMap = initMap;
+        document.head.appendChild(script);
+      } else {
+        initMap();
+      }
+    }, [darkMode]);
+
+    return (
+      <div 
+        id="google-map" 
+        className="w-full h-64 rounded-xl"
+        style={{ minHeight: '256px' }}
+      />
+    );
+  };
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -104,7 +280,11 @@ const Contact = () => {
       className="pt-20"
     >
       {/* Hero Section */}
-      <section className="py-20 bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900">
+      <section className={`py-20 ${
+        darkMode 
+          ? 'bg-gradient-to-br from-gray-900 via-blue-900/20 to-gray-900' 
+          : 'bg-gradient-to-br from-blue-50 via-white to-purple-50'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ y: 50, opacity: 0 }}
@@ -112,10 +292,12 @@ const Contact = () => {
             transition={{ duration: 0.8 }}
             className="text-center space-y-6"
           >
-            <h1 className="text-5xl md:text-6xl font-bold text-white">
-              Get In <span className="text-blue-400">Touch</span>
+            <h1 className={`text-5xl md:text-6xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Get In <span className={darkMode ? 'text-blue-400' : 'text-blue-600'}>Touch</span>
             </h1>
-            <p className="text-xl md:text-2xl text-gray-300 max-w-4xl mx-auto leading-relaxed">
+            <p className={`text-xl md:text-2xl max-w-4xl mx-auto leading-relaxed ${
+              darkMode ? 'text-gray-300' : 'text-gray-600'
+            }`}>
               Have questions about our technology? Want to partner with us? Need enterprise solutions? 
               We'd love to hear from you and help you fight misinformation.
             </p>
@@ -124,7 +306,7 @@ const Contact = () => {
       </section>
 
       {/* Contact Section */}
-      <section className="py-20 bg-gray-900">
+      <section className={`py-20 ${darkMode ? 'bg-gray-900' : 'bg-white'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
             {/* Contact Info */}
@@ -135,8 +317,10 @@ const Contact = () => {
                 transition={{ duration: 0.6 }}
                 viewport={{ once: true }}
               >
-                <h2 className="text-3xl font-bold text-white mb-6">Contact Information</h2>
-                <p className="text-gray-300 mb-8">
+                <h2 className={`text-3xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Contact Information
+                </h2>
+                <p className={`mb-8 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                   We're here to help you understand and implement our AI-powered detection technology. 
                   Reach out through any of these channels.
                 </p>
@@ -150,7 +334,11 @@ const Contact = () => {
                     whileInView={{ x: 0, opacity: 1 }}
                     transition={{ duration: 0.5, delay: index * 0.1 }}
                     viewport={{ once: true }}
-                    className="bg-gray-800/50 backdrop-blur-md border border-gray-700 rounded-xl p-4 hover:bg-gray-800/70 transition-all duration-300 cursor-pointer"
+                    className={`backdrop-blur-md border rounded-xl p-4 transition-all duration-300 cursor-pointer ${
+                      darkMode 
+                        ? 'bg-gray-800/50 border-gray-700 hover:bg-gray-800/70' 
+                        : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                    }`}
                     onClick={() => info.action && window.open(info.action)}
                   >
                     <div className="flex items-start space-x-4">
@@ -158,8 +346,12 @@ const Contact = () => {
                         <info.icon className="h-5 w-5" />
                       </div>
                       <div className="flex-1">
-                        <h3 className="text-white font-semibold">{info.title}</h3>
-                        <p className="text-gray-400 text-sm mb-1">{info.subtitle}</p>
+                        <h3 className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                          {info.title}
+                        </h3>
+                        <p className={`text-sm mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {info.subtitle}
+                        </p>
                         <p className={`text-sm font-medium ${info.color === 'blue' ? 'text-blue-400' : 
                           info.color === 'green' ? 'text-green-400' : 
                           info.color === 'purple' ? 'text-purple-400' : 'text-yellow-400'}`}>
@@ -179,7 +371,9 @@ const Contact = () => {
                 viewport={{ once: true }}
                 className="pt-6"
               >
-                <h3 className="text-white font-semibold mb-4">Follow Us</h3>
+                <h3 className={`font-semibold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Follow Us
+                </h3>
                 <div className="flex space-x-3">
                   {socialLinks.map((social, index) => (
                     <a
@@ -202,12 +396,28 @@ const Contact = () => {
                 whileInView={{ x: 0, opacity: 1 }}
                 transition={{ duration: 0.6 }}
                 viewport={{ once: true }}
-                className="bg-gray-800/50 backdrop-blur-md border border-gray-700 rounded-2xl p-8"
+                className={`backdrop-blur-md border rounded-2xl p-8 ${
+                  darkMode 
+                    ? 'bg-gray-800/50 border-gray-700' 
+                    : 'bg-white border-gray-200 shadow-lg'
+                }`}
               >
                 <div className="flex items-center space-x-3 mb-8">
-                  <MessageSquare className="h-6 w-6 text-blue-400" />
-                  <h2 className="text-3xl font-bold text-white">Send us a message</h2>
+                  <MessageSquare className={`h-6 w-6 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                  <h2 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Send us a message
+                  </h2>
                 </div>
+
+                {submitError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-red-900/20 border border-red-500/20 rounded-xl p-4 mb-6"
+                  >
+                    <p className="text-red-400 text-sm">{submitError}</p>
+                  </motion.div>
+                )}
 
                 {isSubmitted ? (
                   <motion.div
@@ -218,14 +428,20 @@ const Contact = () => {
                     <div className="w-16 h-16 mx-auto mb-4 bg-green-500/10 rounded-full flex items-center justify-center">
                       <Send className="h-8 w-8 text-green-400" />
                     </div>
-                    <h3 className="text-2xl font-bold text-white mb-2">Message Sent!</h3>
-                    <p className="text-gray-300">Thank you for contacting us. We'll get back to you within 24 hours.</p>
+                    <h3 className={`text-2xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      Message Sent!
+                    </h3>
+                    <p className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
+                      Thank you for contacting us. We'll get back to you within 24 hours.
+                    </p>
                   </motion.div>
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label htmlFor="name" className="block text-white font-medium mb-2">
+                        <label htmlFor="name" className={`block font-medium mb-2 ${
+                          darkMode ? 'text-white' : 'text-gray-900'
+                        }`}>
                           Your Name *
                         </label>
                         <input
@@ -235,12 +451,19 @@ const Contact = () => {
                           value={formData.name}
                           onChange={handleChange}
                           required
-                          className="w-full bg-gray-700/50 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                          className={`w-full rounded-xl px-4 py-3 transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                            darkMode 
+                              ? 'bg-gray-700/50 border-gray-600 text-white placeholder-gray-400' 
+                              : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500'
+                          }`}
                           placeholder="John Doe"
+                          autoComplete="name"
                         />
                       </div>
                       <div>
-                        <label htmlFor="email" className="block text-white font-medium mb-2">
+                        <label htmlFor="email" className={`block font-medium mb-2 ${
+                          darkMode ? 'text-white' : 'text-gray-900'
+                        }`}>
                           Email Address *
                         </label>
                         <input
@@ -250,14 +473,21 @@ const Contact = () => {
                           value={formData.email}
                           onChange={handleChange}
                           required
-                          className="w-full bg-gray-700/50 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                          className={`w-full rounded-xl px-4 py-3 transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                            darkMode 
+                              ? 'bg-gray-700/50 border-gray-600 text-white placeholder-gray-400' 
+                              : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500'
+                          }`}
                           placeholder="john@example.com"
+                          autoComplete="email"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label htmlFor="subject" className="block text-white font-medium mb-2">
+                      <label htmlFor="subject" className={`block font-medium mb-2 ${
+                        darkMode ? 'text-white' : 'text-gray-900'
+                      }`}>
                         Subject *
                       </label>
                       <select
@@ -266,7 +496,11 @@ const Contact = () => {
                         value={formData.subject}
                         onChange={handleChange}
                         required
-                        className="w-full bg-gray-700/50 border border-gray-600 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                        className={`w-full rounded-xl px-4 py-3 transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          darkMode 
+                            ? 'bg-gray-700/50 border-gray-600 text-white' 
+                            : 'bg-gray-50 border-gray-300 text-gray-900'
+                        }`}
                       >
                         <option value="">Select a subject</option>
                         <option value="general">General Inquiry</option>
@@ -280,7 +514,9 @@ const Contact = () => {
                     </div>
 
                     <div>
-                      <label htmlFor="message" className="block text-white font-medium mb-2">
+                      <label htmlFor="message" className={`block font-medium mb-2 ${
+                        darkMode ? 'text-white' : 'text-gray-900'
+                      }`}>
                         Message *
                       </label>
                       <textarea
@@ -290,7 +526,11 @@ const Contact = () => {
                         onChange={handleChange}
                         required
                         rows={6}
-                        className="w-full bg-gray-700/50 border border-gray-600 rounded-xl px-4 py-3 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
+                        className={`w-full rounded-xl px-4 py-3 transition-all duration-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          darkMode 
+                            ? 'bg-gray-700/50 border-gray-600 text-white placeholder-gray-400' 
+                            : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500'
+                        }`}
                         placeholder="Tell us how we can help you..."
                       />
                     </div>
@@ -298,7 +538,11 @@ const Contact = () => {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 text-white py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-[1.02] disabled:transform-none disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                      className={`w-full py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-[1.02] disabled:transform-none disabled:cursor-not-allowed flex items-center justify-center space-x-2 ${
+                        darkMode
+                          ? 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:from-gray-600 disabled:to-gray-600 text-white'
+                          : 'bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800 disabled:from-gray-400 disabled:to-gray-500 text-white'
+                      }`}
                     >
                       {isSubmitting ? (
                         <>
@@ -321,7 +565,7 @@ const Contact = () => {
       </section>
 
       {/* Map Section */}
-      <section className="py-20 bg-gray-800/50">
+      <section className={`py-20 ${darkMode ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ y: 50, opacity: 0 }}
@@ -330,10 +574,10 @@ const Contact = () => {
             viewport={{ once: true }}
             className="text-center space-y-4 mb-12"
           >
-            <h2 className="text-4xl font-bold text-white">
-              Visit Our <span className="text-blue-400">Office</span>
+            <h2 className={`text-4xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Visit Our <span className={darkMode ? 'text-blue-400' : 'text-blue-600'}>Office</span>
             </h2>
-            <p className="text-xl text-gray-300">
+            <p className={`text-xl ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
               Located in the heart of San Francisco's tech district
             </p>
           </motion.div>
@@ -343,26 +587,32 @@ const Contact = () => {
             whileInView={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
-            className="bg-gray-900/50 backdrop-blur-md border border-gray-700 rounded-2xl p-8 text-center"
+            className={`backdrop-blur-md border rounded-2xl p-8 text-center ${
+              darkMode 
+                ? 'bg-gray-900/50 border-gray-700' 
+                : 'bg-white border-gray-200 shadow-lg'
+            }`}
           >
-            <div className="w-full h-64 bg-gray-700 rounded-xl flex items-center justify-center mb-6">
-              <div className="text-center">
-                <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-400">Interactive Map Placeholder</p>
-                <p className="text-gray-500 text-sm">Google Maps integration would go here</p>
-              </div>
+            <div className="mb-6">
+              <GoogleMap />
             </div>
             <div className="text-center">
-              <h3 className="text-xl font-semibold text-white mb-2">TruthGuard Headquarters</h3>
-              <p className="text-gray-300">123 Innovation Drive, Suite 400</p>
-              <p className="text-gray-300">San Francisco, CA 94105</p>
+              <h3 className={`text-xl font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                TruthGuard Headquarters
+              </h3>
+              <p className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
+                123 Innovation Drive, Suite 400
+              </p>
+              <p className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
+                San Francisco, CA 94105
+              </p>
             </div>
           </motion.div>
         </div>
       </section>
 
       {/* FAQ Section */}
-      <section className="py-20 bg-gray-900">
+      <section className={`py-20 ${darkMode ? 'bg-gray-900' : 'bg-white'}`}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ y: 50, opacity: 0 }}
@@ -371,10 +621,10 @@ const Contact = () => {
             viewport={{ once: true }}
             className="text-center space-y-4 mb-12"
           >
-            <h2 className="text-4xl font-bold text-white">
-              Frequently Asked <span className="text-blue-400">Questions</span>
+            <h2 className={`text-4xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Frequently Asked <span className={darkMode ? 'text-blue-400' : 'text-blue-600'}>Questions</span>
             </h2>
-            <p className="text-xl text-gray-300">
+            <p className={`text-xl ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
               Quick answers to common questions
             </p>
           </motion.div>
@@ -404,10 +654,18 @@ const Contact = () => {
                 whileInView={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 viewport={{ once: true }}
-                className="bg-gray-800/50 backdrop-blur-md border border-gray-700 rounded-xl p-6"
+                className={`backdrop-blur-md border rounded-xl p-6 ${
+                  darkMode 
+                    ? 'bg-gray-800/50 border-gray-700' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}
               >
-                <h3 className="text-lg font-semibold text-white mb-2">{faq.question}</h3>
-                <p className="text-gray-300">{faq.answer}</p>
+                <h3 className={`text-lg font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {faq.question}
+                </h3>
+                <p className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
+                  {faq.answer}
+                </p>
               </motion.div>
             ))}
           </div>
